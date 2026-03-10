@@ -2,7 +2,8 @@
 
 基于 Docker 运行的视频搬运自动化系统，支持 YouTube 监控、自动下载、AI 二创(翻译+配音)、多平台发布。
 
-**当前版本**: 阿里云语音 + Kimi 大模型方案
+**当前版本**: 阿里云语音 + Kimi 大模型方案  
+**支持平台**: Ubuntu Linux (20.04/22.04/24.04)
 
 ---
 
@@ -19,38 +20,32 @@
 
 ## 📋 环境需求
 
-### 1. 系统环境
+### 1. 系统要求
+
+**仅支持 Ubuntu Linux**
 
 | 组件 | 版本要求 | 说明 |
 |------|----------|------|
+| **操作系统** | Ubuntu 20.04/22.04/24.04 | 仅支持 Linux |
 | **Python** | 3.10+ | 运行主程序 |
 | **FFmpeg** | 4.0+ | 视频处理必需 |
 | **Docker** | 20.10+ | Docker 部署方式 |
 | **Docker Compose** | 2.0+ | Docker 部署方式 |
 
+⚠️ **注意**: 本项目仅在 Ubuntu Linux 上测试通过，不支持 Windows 和 macOS。
+
 ### 2. 安装系统依赖
 
-**Ubuntu/Debian:**
 ```bash
 sudo apt-get update
 sudo apt-get install -y ffmpeg python3 python3-pip python3-venv
 ```
 
-**macOS:**
-```bash
-brew install ffmpeg python@3.12
-```
-
-**Windows:**
-- 下载 FFmpeg: https://ffmpeg.org/download.html
-- 添加到系统 PATH
-
 ### 3. Python 虚拟环境
 
 ```bash
 python3 -m venv venv
-source venv/bin/activate  # Linux/macOS
-# 或: venv\Scripts\activate  # Windows
+source venv/bin/activate
 ```
 
 ---
@@ -123,7 +118,7 @@ docker-compose logs -f video-agent
 open http://localhost:8080
 ```
 
-### 方式 2: 本地 Python 运行
+### 方式 2: 本地 Python 运行（Ubuntu）
 
 ```bash
 # 1. 克隆项目
@@ -132,7 +127,7 @@ cd video-agent
 
 # 2. 创建虚拟环境
 python3 -m venv venv
-source venv/bin/activate  # Linux/macOS
+source venv/bin/activate
 
 # 3. 安装依赖
 pip install -r requirements.txt
@@ -295,11 +290,7 @@ YouTube 新视频
 
 ### FFmpeg 未找到
 ```bash
-# Ubuntu/Debian
 sudo apt-get install ffmpeg
-
-# macOS
-brew install ffmpeg
 ```
 
 ### 阿里云权限错误

@@ -1,78 +1,48 @@
 # ============================================
-# Video Agent - 环境依赖
-# 当前方案: 阿里云语音 + Kimi 大模型
+# Video Agent - 核心依赖
+# 当前配置: 阿里云语音 + Kimi 大模型
 # ============================================
 
-# ----------- 核心依赖 -----------
-# HTTP 客户端 (必需)
+# HTTP 请求
 httpx>=0.25.0
 
-# 异步文件操作
-aiofiles>=23.0.0
-
-# YAML 配置解析
+# 配置解析
 pyyaml>=6.0
+
+# 环境变量
+python-dotenv>=1.0.0
 
 # 数据验证
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
 
-# 环境变量管理
-python-dotenv>=1.0.0
-
-# ----------- YouTube 下载 -----------
-# yt-dlp 用于下载 YouTube 视频
-yt-dlp>=2023.12.30
-
-# ----------- 数据库 -----------
-# SQLite 异步支持
+# 数据库
 sqlalchemy>=2.0.0
 aiosqlite>=0.19.0
 
-# ----------- Web UI -----------
-# FastAPI Web 服务
+# 任务调度
+apscheduler>=3.10.0
+
+# Web UI
 fastapi>=0.104.0
 uvicorn>=0.24.0
 jinja2>=3.1.0
 python-multipart>=0.0.6
 
-# ----------- 工具库 -----------
-# 日志
+# 工具库
 loguru>=0.7.0
-
-# 重试机制
-tenacity>=8.2.0
-
-# 命令行工具
 click>=8.1.0
-
-# 终端美化
 rich>=13.0.0
 
-# ----------- 大模型 API -----------
-# OpenAI 客户端 (用于 Kimi API，兼容 OpenAI 格式)
+# ============================================
+# 当前方案必需
+# ============================================
+
+# Kimi / OpenAI API
 openai>=1.0.0
 
-# ----------- 可选依赖 -----------
-# 任务调度 (如需后台定时任务)
-# apscheduler>=3.10.0
+# YouTube 下载
+yt-dlp>=2023.12.30
 
-# Celery 分布式任务 (可选)
-# celery>=5.3.0
-
-# 视频处理 (如需高级视频编辑)
-# moviepy>=1.0.3
-
-# 浏览器自动化 (如需模拟发布)
-# playwright>=1.40.0
-
-# ============================================
-# 系统依赖 (需单独安装)
-# ============================================
-# FFmpeg 4.0+ (必需，用于视频处理)
-#   Ubuntu: sudo apt-get install ffmpeg
-#   macOS:  brew install ffmpeg
-#   Windows: 下载并添加到 PATH
-#
-# Python 3.10+ (必需)
-# Docker 20.10+ (可选，Docker 部署方式)
+# 阿里云语音服务 SDK（通过 HTTP API 调用，无需额外 SDK）
+# 如需使用官方 SDK 可安装: alibabacloud-nls-java-sdk>=2.0.0

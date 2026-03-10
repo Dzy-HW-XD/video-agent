@@ -119,6 +119,21 @@ python3 main.py schedule
 | **Moonshot Kimi** | 翻译、标题生成 | https://platform.moonshot.cn/ | 按量计费，有免费额度 |
 | **阿里云 NLS** | ASR 语音识别 + TTS 语音合成 | https://nls-portal.console.aliyun.com/ | ¥1.8-4/万字 |
 
+### 代理配置（访问 YouTube 必需）
+
+如果你无法直接访问 YouTube，需要配置代理：
+
+```bash
+# HTTP 代理（如 Clash、v2rayN）
+export HTTP_PROXY=http://127.0.0.1:7890
+export HTTPS_PROXY=http://127.0.0.1:7890
+
+# 或 SOCKS5 代理
+export ALL_PROXY=socks5://127.0.0.1:1080
+```
+
+详细配置见 [docs/PROXY_SETUP.md](docs/PROXY_SETUP.md)
+
 ### 配置步骤
 
 1. **Kimi (Moonshot)**

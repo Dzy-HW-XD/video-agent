@@ -3,6 +3,7 @@
 视频下载模块
 """
 import asyncio
+import os
 import subprocess
 from pathlib import Path
 from typing import Optional
@@ -18,6 +19,17 @@ class VideoDownloader:
     def __init__(self, download_path: str = "./downloads"):
         self.download_path = Path(download_path)
         self.download_path.mkdir(parents=True, exist_ok=True)
+        
+        # 代理配置（从环境变量读取）
+        self.proxy = os.getenv('HTTP_PROXY') or os.getenv('HTTPS_PROXY') or os.getenv('ALL_PROXY')
+    
+    def _get_proxy_cmd(self) -> list:
+        """获取代理命令行参数"""
+        if not self.proxy:
+            return []
+        
+        # yt-dlp 支持 --proxy 参数
+        return ['--proxy', self.proxy]
     
     async def download(
         self, 
@@ -74,6 +86,12 @@ class VideoDownloader:
                     '--sub-langs', 'en,zh-Hans,zh-Hant',
                     '--convert-subs', 'srt',
                 ])
+            
+            # 代理配置
+            proxy_args = self._get_proxy_cmd()
+            if proxy_args:
+                cmd.extend(proxy_args)
+                logger.debug(f"使用代理: {self.proxy}")
             
             # 其他选项
             cmd.extend([

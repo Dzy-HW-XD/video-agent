@@ -526,7 +526,192 @@ class VideoProcessor:
                 f.write(f"{sub.translation if sub.translation else sub.text}\n\n")
     
     # ============================================
-    # 5. 完整处理流程
+    # 5. 字幕版视频处理（保留原声 + 字幕 + 片头）
+    # ============================================
+    
+    async def process_with_subtitles(
+        self,
+        video_path: Path,
+        output_dir: Path,
+        intro_path: Optional[Path] = None
+    ) -> Optional[Path]:
+        """
+        处理视频：保留原声 + 翻译字幕 + 可选片头
+        
+        Args:
+            video_path: 输入视频路径
+            output_dir: 输出目录
+            intro_path: 片头视频路径（可选）
+        
+        Returns:
+            输出视频路径
+        """
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        video_name = video_path.stem
+        
+        # Step 1: 语音识别
+        logger.info("步骤 1/4: 语音识别...")
+        subtitles = await self.transcribe(video_path)
+        
+        # Step 2: 翻译
+        logger.info("步骤 2/4: 翻译字幕...")
+        subtitles = await self.translate(subtitles)
+        
+        # Step 3: 添加字幕（保留原声）
+        logger.info("步骤 3/4: 添加字幕...")
+        subtitled_path = output_dir / f"{video_name}_subtitled.mp4"
+        await self.add_subtitles_only(video_path, subtitles, subtitled_path)
+        
+        # Step 4: 添加片头（如果提供）
+        if intro_path and intro_path.exists():
+            logger.info("步骤 4/4: 添加片头...")
+            output_path = output_dir / f"{video_name}_final.mp4"
+            await self.concat_with_intro(intro_path, subtitled_path, output_path)
+            # 清理中间文件
+            subtitled_path.unlink(missing_ok=True)
+        else:
+            logger.info("步骤 4/4: 跳过片头（未提供）")
+            output_path = subtitled_path
+        
+        logger.success(f"处理完成: {output_path}")
+        return output_path
+    
+    async def add_subtitles_only(
+        self,
+        video_path: Path,
+        subtitles: List[Subtitle],
+        output_path: Path
+    ) -> Path:
+        """
+        给视频添加字幕（保留原声）
+        """
+        logger.info(f"添加字幕: {video_path.name}")
+        
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # 生成字幕文件
+        srt_path = output_path.with_suffix('.srt')
+        self._write_srt(subtitles, srt_path)
+        
+        # FFmpeg: 添加字幕，保留原声
+        cmd = [
+            'ffmpeg', '-y',
+            '-i', str(video_path),
+            '-vf', f"subtitles={srt_path}:force_style='FontSize=28,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,Outline=2,Shadow=1,MarginV=50'",
+            '-c:v', 'libx264',
+            '-preset', 'fast',
+            '-crf', '23',
+            '-c:a', 'copy',  # 复制音频，不重新编码
+            '-movflags', '+faststart',
+            str(output_path)
+        ]
+        
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        
+        # 清理字幕文件
+        srt_path.unlink(missing_ok=True)
+        
+        if process.returncode != 0:
+            raise Exception(f"添加字幕失败: {stderr.decode()[:500]}")
+        
+        logger.success(f"字幕添加完成: {output_path}")
+        return output_path
+    
+    async def concat_with_intro(
+        self,
+        intro_path: Path,
+        main_path: Path,
+        output_path: Path
+    ) -> Path:
+        """
+        拼接片头和主视频
+        """
+        logger.info(f"拼接片头: {intro_path.name} + {main_path.name}")
+        
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # 创建 concat 列表文件
+        concat_list = output_path.parent / 'concat_list.txt'
+        with open(concat_list, 'w', encoding='utf-8') as f:
+            f.write(f"file '{intro_path.absolute()}'\n")
+            f.write(f"file '{main_path.absolute()}'\n")
+        
+        # FFmpeg: 拼接视频
+        cmd = [
+            'ffmpeg', '-y',
+            '-f', 'concat',
+            '-safe', '0',
+            '-i', str(concat_list),
+            '-c', 'copy',  # 直接复制，不重新编码（快速）
+            '-movflags', '+faststart',
+            str(output_path)
+        ]
+        
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        
+        # 清理列表文件
+        concat_list.unlink(missing_ok=True)
+        
+        if process.returncode != 0:
+            # 如果直接复制失败，尝试重新编码
+            logger.warning("直接拼接失败，尝试重新编码...")
+            return await self._concat_with_reencode(intro_path, main_path, output_path)
+        
+        logger.success(f"拼接完成: {output_path}")
+        return output_path
+    
+    async def _concat_with_reencode(
+        self,
+        intro_path: Path,
+        main_path: Path,
+        output_path: Path
+    ) -> Path:
+        """使用重新编码方式拼接（兼容性更好）"""
+        cmd = [
+            'ffmpeg', '-y',
+            '-i', str(intro_path),
+            '-i', str(main_path),
+            '-filter_complex', '[0:v:0][0:a:0][1:v:0][1:a:0]concat=n=2:v=1:a=1[outv][outa]',
+            '-map', '[outv]',
+            '-map', '[outa]',
+            '-c:v', 'libx264',
+            '-preset', 'fast',
+            '-crf', '23',
+            '-c:a', 'aac',
+            '-b:a', '192k',
+            '-movflags', '+faststart',
+            str(output_path)
+        ]
+        
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode != 0:
+            raise Exception(f"视频拼接失败: {stderr.decode()[:500]}")
+        
+        logger.success(f"重新编码拼接完成: {output_path}")
+        return output_path
+    
+    # ============================================
+    # 6. 完整处理流程（配音版，保留）
     # ============================================
     
     async def process_video(
@@ -534,23 +719,23 @@ class VideoProcessor:
         video_path: Path,
         output_dir: Path
     ) -> Optional[Path]:
-        """完整的视频处理流程"""
+        """完整的视频处理流程（配音版）"""
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         
         video_name = video_path.stem
         
-        # Step 1: 语音识别 (线上API)
+        # Step 1: 语音识别
         subtitles = await self.transcribe(video_path)
         
-        # Step 2: 翻译 (大模型API)
+        # Step 2: 翻译
         subtitles = await self.translate(subtitles)
         
-        # Step 3: 生成配音 (TTS API)
+        # Step 3: 生成配音
         audio_path = output_dir / f"{video_name}_dubbed.mp3"
         await self.generate_tts(subtitles, audio_path)
         
-        # Step 4: 合成视频 (本地FFmpeg)
+        # Step 4: 合成视频
         output_path = output_dir / f"{video_name}_final.mp4"
         result = await self.compose_video(video_path, audio_path, subtitles, output_path)
         
@@ -562,8 +747,6 @@ if __name__ == "__main__":
     async def test():
         processor = VideoProcessor()
         print("视频处理器已初始化 (全线上API)")
-        print(f"ASR: {list(processor.asr_config.keys())}")
-        print(f"TTS: {list(processor.tts_config.keys())}")
-        print(f"LLM: {processor.llm_config['provider']}")
+        print(f"支持功能: ASR, 翻译, TTS, 字幕, 片头拼接")
     
     asyncio.run(test())

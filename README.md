@@ -241,7 +241,10 @@ python3 main.py monitor
 # 启动定时监控 (后台运行)
 python3 main.py schedule
 
-# 处理指定视频
+# 处理指定视频（字幕版 + 片头）
+python3 main.py process VIDEO_ID --with-intro assets/intros/your_intro.mp4
+
+# 处理指定视频（字幕版，无片头）
 python3 main.py process VIDEO_ID
 
 # 列出所有视频
@@ -251,14 +254,50 @@ python3 main.py list
 python3 main.py webui
 ```
 
+### 片头视频
+
+将片头视频放置到 `assets/intros/` 目录：
+
+```bash
+# 示例片头路径
+assets/intros/
+├── intro_tech.mp4      # 科技类片头
+├── intro_funny.mp4     # 搞笑类片头
+└── intro_default.mp4   # 默认片头
+```
+
+**片头要求**:
+- 格式: MP4
+- 分辨率: 建议与主视频一致 (如 1920x1080)
+- 时长: 建议 3-5 秒
+- 编码: H.264
+
 ---
 
 ## 📊 处理流程
 
+### 方案 A: 字幕版（保留原声 + 翻译字幕 + 可选片头）**推荐**
+
 ```
 YouTube 新视频
     ↓
-[监控] yt-dlp 检测
+[下载] 1080p + 原字幕
+    ↓
+[识别] 阿里云 ASR 语音转文字
+    ↓
+[翻译] Kimi 大模型翻译
+    ↓
+[加字幕] FFmpeg 添加中文字幕（保留原声）
+    ↓
+[加片头] 拼接指定片头视频（可选）
+    ↓
+[输出] 成品视频（outputs/ 目录）
+```
+
+### 方案 B: 配音版（AI 配音）
+
+```
+YouTube 新视频
     ↓
 [下载] 1080p + 原字幕
     ↓
@@ -270,10 +309,14 @@ YouTube 新视频
     ↓
 [合成] FFmpeg 合并视频+配音+字幕
     ↓
-[输出] 成品视频（存放于 outputs/ 目录）
+[输出] 成品视频（outputs/ 目录）
 ```
 
-成品视频可在 `outputs/` 目录获取，后续发布需手动或接入独立发布系统。
+**说明**:
+- 字幕版保留原声，适合外语学习、生肉视频
+- 配音版用 AI 配音替换原声
+- 成品视频存放于 `outputs/` 目录
+- 片头视频请放置到 `assets/intros/` 目录
 
 ---
 

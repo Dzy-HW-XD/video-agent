@@ -1,0 +1,266 @@
+# Video Agent 配置文件
+# 全线上API方案 - 无需本地部署
+
+# ============================================
+# 1. 大模型接口配置 (LLM APIs - 用于翻译)
+# ============================================
+# 提示: 只需要启用一个即可，建议优先使用国内API
+
+# 🥇 推荐: DeepSeek (性价比最高)
+deepseek:
+  enabled: false
+  api_key: "${DEEPSEEK_API_KEY}"
+  base_url: "https://api.deepseek.com/v1"
+  model: "deepseek-chat"
+
+# 🥈 推荐: 智谱GLM-4-Flash (完全免费!)
+zhipu:
+  enabled: false
+  api_key: "${ZHIPU_API_KEY}"
+  model: "glm-4-flash"
+
+# 🥉 推荐: Moonshot Kimi (长文本最强)
+moonshot:
+  enabled: true
+  api_key: "${MOONSHOT_API_KEY}"
+  base_url: "https://api.moonshot.cn/v1"
+  model: "moonshot-v1-8k"
+
+# 阿里云 - 通义千问
+dashscope:
+  enabled: false
+  api_key: "${DASHSCOPE_API_KEY}"
+  model: "qwen-max"
+
+# OpenAI (可选)
+openai:
+  enabled: false
+  api_key: "${OPENAI_API_KEY}"
+  base_url: "${OPENAI_BASE_URL:-https://api.openai.com/v1}"
+  model: "gpt-4o-mini"
+
+# ============================================
+# 2. 语音识别配置 (ASR) - 全部线上API
+# ============================================
+# 选择以下其中一个方案启用
+
+asr:
+  # ----------------------------------------
+  # 方案1: OpenAI Whisper API (推荐，英文识别最准)
+  # 官网: https://platform.openai.com
+  # 价格: $0.006/分钟 (约 ¥0.04/分钟)
+  # ----------------------------------------
+  openai:
+    enabled: false
+    api_key: "${OPENAI_API_KEY}"  # 可与上面共用
+    model: "whisper-1"  # 固定模型
+    language: "en"  # 音频语言: en/zh/ja/auto
+    response_format: "srt"  # 返回格式: json/text/srt/vtt
+    
+  # ----------------------------------------
+  # 方案2: 阿里云 - 智能语音识别
+  # 官网: https://www.aliyun.com/product/nls
+  # 价格: ¥1.8-3.5/小时 (比OpenAI便宜)
+  # 特点: 中文识别强，支持长音频
+  # ----------------------------------------
+  aliyun:
+    enabled: true
+    access_key_id: "${ALIYUN_ACCESS_KEY_ID}"
+    access_key_secret: "${ALIYUN_ACCESS_KEY_SECRET}"
+    app_key: "${ALIYUN_ASR_APP_KEY}"  # 在控制台创建应用获取
+    region: "cn-shanghai"
+
+  # ----------------------------------------
+  # 方案3: 讯飞 - 语音识别（未启用）
+  # ----------------------------------------
+  xfyun:
+    enabled: false
+    app_id: "${XFYUN_APP_ID}"
+    api_key: "${XFYUN_API_KEY}"
+    api_secret: "${XFYUN_API_SECRET}"
+
+# ============================================
+# 3. 语音合成配置 (TTS) - 全部线上API
+# ============================================
+
+tts:
+  # ----------------------------------------
+  # 方案1: Azure TTS (推荐，最自然)
+  # 官网: https://azure.microsoft.com/zh-cn/products/ai-services/text-to-speech/
+  # 价格: 标准版 $16/100万字 (约 ¥115)
+  # 特点: 最自然的AI语音，支持多种中文音色
+  # ----------------------------------------
+  azure:
+    enabled: false
+    subscription_key: "${AZURE_TTS_KEY}"
+    region: "eastasia"  # 或 southeastasia
+    voice_name: "zh-CN-XiaoxiaoNeural"  # 晓晓-女声
+    # 其他推荐音色:
+    # zh-CN-YunxiNeural (云希-男声)
+    # zh-CN-XiaoyiNeural (晓伊-女声温柔)
+    # zh-CN-YunjianNeural (云健-男声新闻)
+    output_format: "audio-24khz-96kbitrate-mono-mp3"
+    
+  # ----------------------------------------
+  # 方案2: 阿里云 - 语音合成
+  # 官网: https://www.aliyun.com/product/nls
+  # 价格: ¥2-4/万字
+  # 特点: 中文发音标准，价格便宜
+  # ----------------------------------------
+  aliyun:
+    enabled: true
+    access_key_id: "${ALIYUN_ACCESS_KEY_ID}"
+    access_key_secret: "${ALIYUN_ACCESS_KEY_SECRET}"
+    app_key: "${ALIYUN_TTS_APP_KEY}"
+    voice: "zhimiao_emo"  # 知妙情感版-女声（抖音风格）
+    # 其他超拟人音色:
+    # zhinan(知楠-男声), zhimao(知猫-女声)
+    # zhishu(知树-童声), zhistella(女声-英文好)
+    speech_rate: 0  # 语速: -500~500, 0为正常
+    pitch_rate: 0   # 音调: -500~500
+
+  # ----------------------------------------
+  # 方案3: 讯飞 - 语音合成
+  # 官网: https://www.xfyun.cn/services/online_tts
+  # 价格: 免费额度够用，超量¥1.5/万字
+  # 特点: 中文语音情感丰富
+  # ----------------------------------------
+  xfyun:
+    enabled: false
+    app_id: "${XFYUN_APP_ID}"
+    api_key: "${XFYUN_API_KEY}"
+    api_secret: "${XFYUN_API_SECRET}"
+    voice: "xiaoyan"  # 小燕-女声
+    # 其他: xiaofeng(小峰-男声), xiaomei(小美-童声)
+
+# ============================================
+# 4. 翻译配置 (可选，如大模型已够用)
+# ============================================
+
+translation:
+  enabled: false  # 如用大模型翻译，设为false
+  provider: "deepl"
+  api_key: "${DEEPL_API_KEY}"
+  target_lang: "ZH"
+
+# ============================================
+# 5. YouTube 监控配置
+# ============================================
+
+youtube:
+  channels:
+    - name: "Linus Tech Tips"
+      url: "https://www.youtube.com/@LinusTechTips"
+      language: "en"
+      category: "科技"
+      filter:
+        min_duration: 600
+    # 添加更多频道...
+  
+  check_interval: 300
+  download:
+    quality: "1080p"
+    format: "mp4"
+    subtitle_langs: ["en"]
+
+# ============================================
+# 6. 视频处理配置
+# ============================================
+
+processing:
+  # 字幕样式
+  subtitle:
+    enabled: true
+    style: "modern"
+    font: "Noto Sans CJK SC"
+    font_size: 24
+    primary_color: "&H00FFFFFF"
+    outline_color: "&H00000000"
+    position: "bottom"
+
+# ============================================
+# 7. 目标平台发布配置
+# ============================================
+
+platforms:
+  douyin:
+    enabled: true
+    login_type: "cookie"
+    cookies: "${DOUYIN_COOKIES}"
+    publish:
+      default_title_template: "{original_title} | 中文字幕版"
+      default_tags: ["科技", "数码", "评测"]
+      visibility: "public"
+      
+  bilibili:
+    enabled: true
+    login_type: "cookie"
+    cookies: "${BILIBILI_COOKIES}"
+    publish:
+      default_title_template: "【中字】{original_title}"
+      default_tags: ["科技", "数码", "评测"]
+      tid: 95
+      copyright: 2
+
+# ============================================
+# 8. 工作流配置
+# ============================================
+
+workflow:
+  auto_process: true
+  steps:
+    - download
+    - transcribe
+    - translate
+    - tts
+    - compose
+    - publish
+  review_required: false
+  retry:
+    max_attempts: 3
+    delay: 60
+
+# ============================================
+# 9. 数据库配置
+# ============================================
+
+database:
+  type: "sqlite"
+  sqlite:
+    path: "./database/video_agent.db"
+
+# ============================================
+# 10. Web UI 配置
+# ============================================
+
+webui:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8080
+  auth:
+    enabled: true
+    username: "admin"
+    password: "${WEBUI_PASSWORD:-admin123}"
+
+# ============================================
+# 11. 日志配置
+# ============================================
+
+logging:
+  level: "INFO"
+  file: "./logs/video-agent.log"
+  max_size: "100MB"
+  backup_count: 7
+  
+# ============================================
+# 12. 系统配置
+# ============================================
+
+system:
+  max_concurrent_tasks: 2
+  download_path: "./downloads"
+  output_path: "./outputs"
+  temp_path: "./temp"
+  cleanup:
+    enabled: true
+    keep_days: 7

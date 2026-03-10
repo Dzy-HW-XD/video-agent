@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # 主应用服务
+  video-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-agent
+    restart: unless-stopped
+    
+    volumes:
+      # 配置文件
+      - ./config:/app/config:ro
+      # 下载的视频
+      - ./downloads:/app/downloads
+      # 输出的成品
+      - ./outputs:/app/outputs
+      # 临时文件
+      - ./temp:/app/temp
+      # 日志
+      - ./logs:/app/logs
+      # 数据库
+      - ./database:/app/database
+    
+    environment:
+      - TZ=Asia/Shanghai
+      - CONFIG_PATH=/app/config/config.yaml
+      - PYTHONUNBUFFERED=1
+    
+    # 不映射端口，WebUI 单独服务
+    networks:
+      - video-agent-network
+
+  # Web UI 服务
+  webui:
+    build:
+      context: ./webui
+      dockerfile: Dockerfile
+    container_name: video-agent-webui
+    restart: unless-stopped
+    
+    ports:
+      - "8080:8080"
+    
+    volumes:
+      - ./config:/app/config:ro
+      - ./database:/app/database:ro
+      - ./outputs:/app/outputs:ro
+    
+    environment:
+      - TZ=Asia/Shanghai
+      - API_BASE_URL=http://video-agent:8000
+    
+    depends_on:
+      - video-agent
+    
+    networks:
+      - video-agent-network
+
+  # 可选: 使用已有的 Redis
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: video-agent-redis
+  #   restart: unless-stopped
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - video-agent-network
+
+networks:
+  video-agent-network:
+    driver: bridge
+
+# volumes:
+#   redis_data:

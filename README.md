@@ -18,34 +18,90 @@
 
 ---
 
-## 📋 环境需求
+## 📋 环境配置
 
-### 1. 系统要求
+### 系统要求
 
-**仅支持 Ubuntu Linux**
+**仅支持 Ubuntu Linux (20.04/22.04/24.04)**
 
-| 组件 | 版本要求 | 说明 |
+| 组件 | 版本要求 | 用途 |
 |------|----------|------|
-| **操作系统** | Ubuntu 20.04/22.04/24.04 | 仅支持 Linux |
+| **操作系统** | Ubuntu 20.04+ | 运行平台 |
 | **Python** | 3.10+ | 运行主程序 |
-| **FFmpeg** | 4.0+ | 视频处理必需 |
-| **Docker** | 20.10+ | Docker 部署方式 |
-| **Docker Compose** | 2.0+ | Docker 部署方式 |
+| **FFmpeg** | 4.0+ | 视频处理（必需）|
+| **Git** | 任意版本 | 克隆仓库 |
 
 ⚠️ **注意**: 本项目仅在 Ubuntu Linux 上测试通过，不支持 Windows 和 macOS。
 
-### 2. 安装系统依赖
+---
+
+## 🚀 快速开始
+
+### 完整安装步骤
+
+#### 1. 安装系统依赖（通过 apt）
 
 ```bash
+# 更新软件源
 sudo apt-get update
-sudo apt-get install -y ffmpeg python3 python3-pip python3-venv
+
+# 安装必需系统依赖
+sudo apt-get install -y \
+    ffmpeg \
+    python3 \
+    python3-pip \
+    python3-venv \
+    git
 ```
 
-### 3. Python 虚拟环境
+#### 2. 克隆项目
 
 ```bash
+git clone https://github.com/Dzy-HW-XD/video-agent.git
+cd video-agent
+```
+
+#### 3. 安装 Python 依赖（通过 pip）
+
+```bash
+# 创建虚拟环境
 python3 -m venv venv
+
+# 激活虚拟环境
 source venv/bin/activate
+
+# 安装 Python 依赖
+pip install -r requirements.txt
+```
+
+#### 4. 配置 API 密钥
+
+```bash
+# 复制配置模板
+cp .env.example .env
+
+# 编辑配置文件，填入你的 API 密钥
+vim .env
+```
+
+需要配置的密钥：
+- `MOONSHOT_API_KEY` - Kimi 大模型 API Key
+- `ALIYUN_ACCESS_KEY_ID` - 阿里云 AccessKey ID
+- `ALIYUN_ACCESS_KEY_SECRET` - 阿里云 AccessKey Secret
+- `ALIYUN_TTS_APP_KEY` - 阿里云语音合成 AppKey
+- `ALIYUN_ASR_APP_KEY` - 阿里云语音识别 AppKey
+
+#### 5. 初始化并运行
+
+```bash
+# 初始化数据库
+python3 main.py init
+
+# 运行测试
+python3 main.py monitor
+
+# 或启动定时任务
+python3 main.py schedule
 ```
 
 ---
@@ -95,9 +151,9 @@ WEBUI_PASSWORD=your-password
 
 ---
 
-## 🚀 快速开始
+## 🐳 Docker 部署（可选）
 
-### 方式 1: Docker 运行 (推荐)
+如果不想手动配置环境，可以使用 Docker：
 
 ```bash
 # 1. 克隆项目
@@ -112,35 +168,18 @@ vim .env  # 填入你的 API Key
 docker-compose up -d
 
 # 4. 查看日志
-docker-compose logs -f video-agent
-
-# 5. 打开 Web UI
-open http://localhost:8080
+docker-compose logs -f
 ```
 
-### 方式 2: 本地 Python 运行（Ubuntu）
+### Docker 目录映射
 
-```bash
-# 1. 克隆项目
-git clone https://github.com/Dzy-HW-XD/video-agent.git
-cd video-agent
-
-# 2. 创建虚拟环境
-python3 -m venv venv
-source venv/bin/activate
-
-# 3. 安装依赖
-pip install -r requirements.txt
-
-# 4. 配置环境变量
-cp .env.example .env
-vim .env  # 填入你的 API Key
-
-# 5. 初始化数据库
-python3 main.py init
-
-# 6. 运行
-python3 main.py schedule
+```yaml
+volumes:
+  - ./config:/app/config:ro      # 配置（只读）
+  - ./downloads:/app/downloads   # 下载的视频
+  - ./outputs:/app/outputs       # 成品视频
+  - ./logs:/app/logs             # 日志
+  - ./database:/app/database     # 数据库
 ```
 
 ---
@@ -206,40 +245,6 @@ python3 main.py list
 
 # 启动 Web UI
 python3 main.py webui
-```
-
----
-
-## 🐳 Docker 说明
-
-### 目录映射
-
-```yaml
-volumes:
-  - ./config:/app/config:ro      # 配置（只读）
-  - ./downloads:/app/downloads   # 下载的视频
-  - ./outputs:/app/outputs       # 成品视频
-  - ./logs:/app/logs             # 日志
-  - ./database:/app/database     # 数据库
-```
-
-### 常用命令
-
-```bash
-# 启动
-docker-compose up -d
-
-# 停止
-docker-compose down
-
-# 重启
-docker-compose restart
-
-# 查看日志
-docker-compose logs -f
-
-# 更新代码后重建
-docker-compose up -d --build
 ```
 
 ---

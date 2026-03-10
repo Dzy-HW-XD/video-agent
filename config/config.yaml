@@ -179,28 +179,16 @@ processing:
     position: "bottom"
 
 # ============================================
-# 7. 目标平台发布配置
+# 7. 目标平台发布配置（已禁用）
 # ============================================
+# 说明：本项目专注于内容生成，发布功能将在独立项目中实现
 
 platforms:
   douyin:
-    enabled: true
-    login_type: "cookie"
-    cookies: "${DOUYIN_COOKIES}"
-    publish:
-      default_title_template: "{original_title} | 中文字幕版"
-      default_tags: ["科技", "数码", "评测"]
-      visibility: "public"
-      
+    enabled: false
+    
   bilibili:
-    enabled: true
-    login_type: "cookie"
-    cookies: "${BILIBILI_COOKIES}"
-    publish:
-      default_title_template: "【中字】{original_title}"
-      default_tags: ["科技", "数码", "评测"]
-      tid: 95
-      copyright: 2
+    enabled: false
 
 # ============================================
 # 8. 工作流配置
@@ -209,12 +197,11 @@ platforms:
 workflow:
   auto_process: true
   steps:
-    - download
-    - transcribe
-    - translate
-    - tts
-    - compose
-    - publish
+    - download      # 下载视频
+    - transcribe    # ASR 语音识别
+    - translate     # 翻译
+    - tts           # TTS 语音合成
+    - compose       # 视频合成
   review_required: false
   retry:
     max_attempts: 3

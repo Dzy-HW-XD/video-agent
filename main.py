@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """
 Video Agent - 视频搬运/二创自动化工具
-主入口文件
+主入口文件 - 简化版：YouTube字幕+翻译
 """
 import asyncio
 import sys
 from pathlib import Path
+
+# 先加载环境变量
+from dotenv import load_dotenv
+load_dotenv()
 
 import click
 import yaml
@@ -18,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from core.monitor import YouTubeMonitor
 from core.downloader import VideoDownloader
-from core.processor import VideoProcessor
+from subtitle_processor import YouTubeSubtitleProcessor, process_video_with_youtube_subtitles
 from database.models import init_database, Video, VideoStatus, get_session
 
 console = Console()
@@ -35,23 +39,61 @@ logger.add(
 logger.add(sys.stderr, level="INFO")
 
 
+def load_config_with_env(config_path: str) -> dict:
+    """加载配置并替换环境变量"""
+    import os
+    import re
+    
+    with open(config_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # 替换 ${VAR_NAME} 为环境变量值
+    def replace_var(match):
+        var_name = match.group(1)
+        env_value = os.getenv(var_name)
+        if env_value is None:
+            print(f"警告: 环境变量 {var_name} 未设置")
+            return match.group(0)  # 返回原始值
+        return env_value
+    
+    content = re.sub(r'\$\{([^}]+)\}', replace_var, content)
+    config = yaml.safe_load(content)
+    
+    # 调试输出
+    for provider in ['moonshot', 'deepseek', 'openai']:
+        if config.get(provider, {}).get('enabled'):
+            api_key = config.get(provider, {}).get('api_key', '')
+            print(f"使用 {provider} API: {api_key[:10]}..." if api_key else f"{provider} API key 未设置")
+    
+    return config
+
+
 class VideoAgent:
     """视频 Agent 主类"""
     
     def __init__(self, config_path: str = "config/config.yaml"):
         self.config_path = config_path
-        with open(config_path, 'r', encoding='utf-8') as f:
-            self.config = yaml.safe_load(f)
+        self.config = load_config_with_env(config_path)
         
         # 初始化组件
         self.monitor = YouTubeMonitor(config_path)
         self.downloader = VideoDownloader(self.config['system']['download_path'])
-        self.processor = VideoProcessor(config_path)
+        
+        # 获取 LLM 配置
+        self.llm_config = self._get_llm_config()
         
         # 初始化数据库
         init_database(config_path)
         
-        logger.info("Video Agent 初始化完成")
+        logger.info("Video Agent 初始化完成 (字幕翻译版)")
+    
+    def _get_llm_config(self) -> dict:
+        """获取启用的 LLM 配置"""
+        llm_providers = ['deepseek', 'zhipu', 'moonshot', 'dashscope', 'openai']
+        for provider in llm_providers:
+            if self.config.get(provider, {}).get('enabled'):
+                return {'provider': provider, **self.config[provider]}
+        raise ValueError("未启用任何大模型API")
     
     async def run_monitor_cycle(self):
         """运行一次监控循环"""
@@ -107,7 +149,7 @@ class VideoAgent:
         console.print(f"\n[bold]开始处理: {video.title[:50]}...[/bold]")
         
         try:
-            # Step 1: 下载
+            # Step 1: 下载视频
             video.status = VideoStatus.DOWNLOADING
             session.commit()
             
@@ -137,13 +179,16 @@ class VideoAgent:
             session.commit()
             console.print(f"[green]✓ 下载完成[/green]")
             
-            # Step 2: 处理 (语音转文字 + 翻译 + 配音 + 合成)
+            # Step 2: 处理字幕（下载+翻译+合成）
             video.status = VideoStatus.PROCESSING
             session.commit()
             
-            output_path = await self.processor.process_video(
-                download_path,
-                self.config['system']['output_path']
+            output_path = await process_video_with_youtube_subtitles(
+                video_url=video.original_url,
+                video_path=Path(download_path),
+                output_dir=Path(self.config['system']['output_path']),
+                llm_config=self.llm_config,
+                intro_path=None
             )
             
             if not output_path:
@@ -260,10 +305,83 @@ def init():
 
 
 @cli.command()
+@click.argument('video_url')
+def download_translate(video_url):
+    """直接下载并翻译视频字幕"""
+    async def process():
+        console.print(f"[bold]处理视频: {video_url}[/bold]")
+        
+        # 加载配置
+        config = load_config_with_env("config/config.yaml")
+        llm_config = None
+        for provider in ['deepseek', 'zhipu', 'moonshot', 'dashscope', 'openai']:
+            if config.get(provider, {}).get('enabled'):
+                llm_config = {'provider': provider, **config[provider]}
+                break
+        
+        if not llm_config:
+            console.print("[red]错误: 未配置 LLM API[/red]")
+            return
+        
+        # 下载视频
+        from datetime import datetime
+        from core.monitor import VideoInfo
+        
+        # 获取视频信息
+        import subprocess
+        result = subprocess.run(
+            ['yt-dlp', '--dump-json', '--no-download', video_url],
+            capture_output=True, text=True, timeout=60
+        )
+        
+        if result.returncode != 0:
+            console.print(f"[red]获取视频信息失败: {result.stderr}[/red]")
+            return
+        
+        import json
+        info = json.loads(result.stdout)
+        
+        video_info = VideoInfo(
+            id=info['id'],
+            title=info['title'],
+            description=info.get('description', '')[:200],
+            duration=info.get('duration', 0),
+            upload_date=datetime.now(),
+            channel_name=info.get('channel', 'Unknown'),
+            channel_url=info.get('channel_url', ''),
+            thumbnail=info.get('thumbnail', ''),
+            original_url=video_url
+        )
+        
+        downloader = VideoDownloader(config['system']['download_path'])
+        download_path = await downloader.download(video_info, quality='720p', download_subtitles=False)
+        
+        if not download_path:
+            console.print("[red]下载失败[/red]")
+            return
+        
+        console.print(f"[green]✓ 下载完成: {download_path}[/green]")
+        
+        # 处理字幕
+        output_path = await process_video_with_youtube_subtitles(
+            video_url=video_url,
+            video_path=Path(download_path),
+            output_dir=Path(config['system']['output_path']),
+            llm_config=llm_config
+        )
+        
+        if output_path:
+            console.print(f"[green]✅ 完成! 输出文件: {output_path}[/green]")
+        else:
+            console.print("[red]处理失败[/red]")
+    
+    asyncio.run(process())
+
+
+@cli.command()
 def webui():
     """启动 Web UI"""
     console.print("[bold]启动 Web UI...[/bold]")
-    # 这里启动 FastAPI
     import uvicorn
     from webui.app import app
     uvicorn.run(app, host="0.0.0.0", port=8080)

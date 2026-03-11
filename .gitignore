@@ -34,13 +34,17 @@ env/
 *~
 .DS_Store
 
-# Sensitive Information
+# Sensitive Information - NEVER COMMIT THESE
 .env
 .env.local
 .env.*.local
+!.env.github  # 保留模板文件
 *.key
 *.pem
 *.crt
+config/config.local.yaml
+*.secret
+secrets/
 
 # Project Specific - Data
 downloads/*

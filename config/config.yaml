@@ -1,5 +1,5 @@
-# Video Agent 配置文件
-# 全线上API方案 - 无需本地部署
+# Video Agent 配置文件 - 简化版
+# 仅使用 YouTube 字幕 + LLM 翻译
 
 # ============================================
 # 1. 大模型接口配置 (LLM APIs - 用于翻译)
@@ -40,111 +40,7 @@ openai:
   model: "gpt-4o-mini"
 
 # ============================================
-# 2. 语音识别配置 (ASR) - 全部线上API
-# ============================================
-# 选择以下其中一个方案启用
-
-asr:
-  # ----------------------------------------
-  # 方案1: OpenAI Whisper API (推荐，英文识别最准)
-  # 官网: https://platform.openai.com
-  # 价格: $0.006/分钟 (约 ¥0.04/分钟)
-  # ----------------------------------------
-  openai:
-    enabled: false
-    api_key: "${OPENAI_API_KEY}"  # 可与上面共用
-    model: "whisper-1"  # 固定模型
-    language: "en"  # 音频语言: en/zh/ja/auto
-    response_format: "srt"  # 返回格式: json/text/srt/vtt
-    
-  # ----------------------------------------
-  # 方案2: 阿里云 - 智能语音识别
-  # 官网: https://www.aliyun.com/product/nls
-  # 价格: ¥1.8-3.5/小时 (比OpenAI便宜)
-  # 特点: 中文识别强，支持长音频
-  # ----------------------------------------
-  aliyun:
-    enabled: true
-    access_key_id: "${ALIYUN_ACCESS_KEY_ID}"
-    access_key_secret: "${ALIYUN_ACCESS_KEY_SECRET}"
-    app_key: "${ALIYUN_ASR_APP_KEY}"  # 在控制台创建应用获取
-    region: "cn-shanghai"
-
-  # ----------------------------------------
-  # 方案3: 讯飞 - 语音识别（未启用）
-  # ----------------------------------------
-  xfyun:
-    enabled: false
-    app_id: "${XFYUN_APP_ID}"
-    api_key: "${XFYUN_API_KEY}"
-    api_secret: "${XFYUN_API_SECRET}"
-
-# ============================================
-# 3. 语音合成配置 (TTS) - 全部线上API
-# ============================================
-
-tts:
-  # ----------------------------------------
-  # 方案1: Azure TTS (推荐，最自然)
-  # 官网: https://azure.microsoft.com/zh-cn/products/ai-services/text-to-speech/
-  # 价格: 标准版 $16/100万字 (约 ¥115)
-  # 特点: 最自然的AI语音，支持多种中文音色
-  # ----------------------------------------
-  azure:
-    enabled: false
-    subscription_key: "${AZURE_TTS_KEY}"
-    region: "eastasia"  # 或 southeastasia
-    voice_name: "zh-CN-XiaoxiaoNeural"  # 晓晓-女声
-    # 其他推荐音色:
-    # zh-CN-YunxiNeural (云希-男声)
-    # zh-CN-XiaoyiNeural (晓伊-女声温柔)
-    # zh-CN-YunjianNeural (云健-男声新闻)
-    output_format: "audio-24khz-96kbitrate-mono-mp3"
-    
-  # ----------------------------------------
-  # 方案2: 阿里云 - 语音合成
-  # 官网: https://www.aliyun.com/product/nls
-  # 价格: ¥2-4/万字
-  # 特点: 中文发音标准，价格便宜
-  # ----------------------------------------
-  aliyun:
-    enabled: true
-    access_key_id: "${ALIYUN_ACCESS_KEY_ID}"
-    access_key_secret: "${ALIYUN_ACCESS_KEY_SECRET}"
-    app_key: "${ALIYUN_TTS_APP_KEY}"
-    voice: "zhimiao_emo"  # 知妙情感版-女声（抖音风格）
-    # 其他超拟人音色:
-    # zhinan(知楠-男声), zhimao(知猫-女声)
-    # zhishu(知树-童声), zhistella(女声-英文好)
-    speech_rate: 0  # 语速: -500~500, 0为正常
-    pitch_rate: 0   # 音调: -500~500
-
-  # ----------------------------------------
-  # 方案3: 讯飞 - 语音合成
-  # 官网: https://www.xfyun.cn/services/online_tts
-  # 价格: 免费额度够用，超量¥1.5/万字
-  # 特点: 中文语音情感丰富
-  # ----------------------------------------
-  xfyun:
-    enabled: false
-    app_id: "${XFYUN_APP_ID}"
-    api_key: "${XFYUN_API_KEY}"
-    api_secret: "${XFYUN_API_SECRET}"
-    voice: "xiaoyan"  # 小燕-女声
-    # 其他: xiaofeng(小峰-男声), xiaomei(小美-童声)
-
-# ============================================
-# 4. 翻译配置 (可选，如大模型已够用)
-# ============================================
-
-translation:
-  enabled: false  # 如用大模型翻译，设为false
-  provider: "deepl"
-  api_key: "${DEEPL_API_KEY}"
-  target_lang: "ZH"
-
-# ============================================
-# 5. YouTube 监控配置
+# 2. YouTube 监控配置
 # ============================================
 
 youtube:
@@ -164,7 +60,7 @@ youtube:
     subtitle_langs: ["en"]
 
 # ============================================
-# 6. 视频处理配置
+# 3. 视频处理配置
 # ============================================
 
 processing:
@@ -179,28 +75,15 @@ processing:
     position: "bottom"
 
 # ============================================
-# 7. 目标平台发布配置（已禁用）
-# ============================================
-# 说明：本项目专注于内容生成，发布功能将在独立项目中实现
-
-platforms:
-  douyin:
-    enabled: false
-    
-  bilibili:
-    enabled: false
-
-# ============================================
-# 8. 工作流配置
+# 4. 工作流配置
 # ============================================
 
 workflow:
   auto_process: true
   steps:
     - download      # 下载视频
-    - transcribe    # ASR 语音识别
+    - subtitle      # 下载字幕
     - translate     # 翻译
-    - tts           # TTS 语音合成
     - compose       # 视频合成
   review_required: false
   retry:
@@ -208,7 +91,7 @@ workflow:
     delay: 60
 
 # ============================================
-# 9. 数据库配置
+# 5. 数据库配置
 # ============================================
 
 database:
@@ -217,7 +100,7 @@ database:
     path: "./database/video_agent.db"
 
 # ============================================
-# 10. Web UI 配置
+# 6. Web UI 配置
 # ============================================
 
 webui:
@@ -230,7 +113,7 @@ webui:
     password: "${WEBUI_PASSWORD:-admin123}"
 
 # ============================================
-# 11. 日志配置
+# 7. 日志配置
 # ============================================
 
 logging:
@@ -240,7 +123,7 @@ logging:
   backup_count: 7
   
 # ============================================
-# 12. 系统配置
+# 8. 系统配置
 # ============================================
 
 system:

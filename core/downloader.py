@@ -78,12 +78,12 @@ class VideoDownloader:
             else:
                 cmd.extend(['-f', 'bestvideo+bestaudio/best'])
             
-            # 下载字幕
+            # 下载字幕（可选，默认不下载，由 subtitle_processor 单独处理）
             if download_subtitles:
                 cmd.extend([
                     '--write-subs',
                     '--write-auto-subs',
-                    '--sub-langs', 'en,zh-Hans,zh-Hant',
+                    '--sub-langs', 'en',
                     '--convert-subs', 'srt',
                 ])
             
